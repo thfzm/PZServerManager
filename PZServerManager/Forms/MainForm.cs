@@ -53,6 +53,10 @@ public partial class MainForm : Form
         _scheduler.Start();
 
         UpdateTrayState(_server.Status);
+
+        // First launch (no SteamCMD/server yet)? Open the setup tab so the wizard is in front.
+        if (!_config.IsBootstrapped)
+            _categoryTabs.SelectedTab = _setupTab;
     }
 
     private void InitializeTray()
