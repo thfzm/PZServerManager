@@ -9,9 +9,7 @@ public static class AppConfigStore
 
     public static AppConfig Load()
     {
-        if (!File.Exists(AppPaths.ConfigFile))
-            return new AppConfig();
-
+        if (!File.Exists(AppPaths.ConfigFile)) return new AppConfig();
         try
         {
             var json = File.ReadAllText(AppPaths.ConfigFile);
@@ -26,7 +24,6 @@ public static class AppConfigStore
     public static void Save(AppConfig config)
     {
         Directory.CreateDirectory(AppPaths.AppDataDir);
-        var json = JsonSerializer.Serialize(config, JsonOptions);
-        File.WriteAllText(AppPaths.ConfigFile, json);
+        File.WriteAllText(AppPaths.ConfigFile, JsonSerializer.Serialize(config, JsonOptions));
     }
 }
