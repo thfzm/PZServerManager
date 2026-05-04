@@ -122,13 +122,16 @@ public sealed class SteamCmd
     {
         Directory.CreateDirectory(serverDir);
         var validateFlag = validate ? " validate" : "";
-        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +app_update 380870{validateFlag} +quit";
+        // `+app_info_update 1` forces SteamCMD to refresh the app metadata cache before app_update.
+        // Without it, a fresh SteamCMD often hits "Failed to install app '380870' (Missing configuration)" / exit 8
+        // even after self-updating.
+        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +app_info_update 1 +app_update 380870{validateFlag} +quit";
         return RunAsync(args, log, ct);
     }
 
     public Task<int> DownloadWorkshopItemAsync(string serverDir, long workshopId, IProgress<string>? log, CancellationToken ct)
     {
-        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +workshop_download_item 108600 {workshopId} +quit";
+        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +app_info_update 1 +workshop_download_item 108600 {workshopId} +quit";
         return RunAsync(args, log, ct);
     }
 }

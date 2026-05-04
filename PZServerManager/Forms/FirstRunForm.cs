@@ -49,7 +49,22 @@ public partial class FirstRunForm : Form
         _confirmPathButton.Enabled = card1Active && _busyCts is null;
         _downloadButton.Enabled = card2Active && _busyCts is null;
         _installButton.Enabled = card3Active && _busyCts is null;
-        _continueButton.Enabled = _stage == Stage.Done;
+        var done = _stage == Stage.Done;
+        _continueButton.Enabled = done;
+        if (done)
+        {
+            _continueButton.BackColor = Color.FromArgb(74, 122, 250);
+            _continueButton.ForeColor = Color.White;
+            _continueButton.FlatStyle = FlatStyle.Flat;
+            _continueButton.FlatAppearance.BorderSize = 0;
+            _continueButton.Font = new Font(_continueButton.Font, FontStyle.Bold);
+            _continueButton.Focus();
+        }
+        else
+        {
+            _continueButton.UseVisualStyleBackColor = true;
+            _continueButton.FlatStyle = FlatStyle.System;
+        }
         _cancelButton.Text = _busyCts is null ? "취소" : "중단";
     }
 
@@ -192,7 +207,7 @@ public partial class FirstRunForm : Form
             Result = config;
 
             _progress3.Value = 100;
-            _status3.Text = "완료.";
+            _status3.Text = "완료 — '계속' 버튼을 눌러 관리 창으로 이동하세요.";
             _stage = Stage.Done;
         }
         catch (OperationCanceledException)
