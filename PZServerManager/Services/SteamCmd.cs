@@ -17,24 +17,44 @@ public sealed class SteamCmd
         InstallDir = installDir;
     }
 
-    public async Task DownloadAndExtractAsync(IProgress<string>? log, CancellationToken ct)
+    public Task DownloadAndExtractAsync(IProgress<string>? log, CancellationToken ct)
+        => DownloadAndExtractAsync(log, percent: null, ct);
+
+    public async Task DownloadAndExtractAsync(IProgress<string>? log, IProgress<int>? percent, CancellationToken ct)
     {
         Directory.CreateDirectory(InstallDir);
         var zipPath = Path.Combine(InstallDir, "steamcmd.zip");
 
         log?.Report($"Downloading SteamCMD from {DownloadUrl}");
+        percent?.Report(0);
         using (var http = new HttpClient())
         using (var response = await http.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct))
         {
             response.EnsureSuccessStatusCode();
+            var total = response.Content.Headers.ContentLength ?? -1;
             await using var src = await response.Content.ReadAsStreamAsync(ct);
             await using var dst = File.Create(zipPath);
-            await src.CopyToAsync(dst, ct);
+            var buffer = new byte[81920];
+            long copied = 0;
+            int last = -1;
+            while (true)
+            {
+                var read = await src.ReadAsync(buffer, ct);
+                if (read <= 0) break;
+                await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+                copied += read;
+                if (total > 0)
+                {
+                    var pct = (int)(copied * 95 / total); // reserve last 5% for extract
+                    if (pct != last) { percent?.Report(pct); last = pct; }
+                }
+            }
         }
 
         log?.Report($"Extracting to {InstallDir}");
         ZipFile.ExtractToDirectory(zipPath, InstallDir, overwriteFiles: true);
         File.Delete(zipPath);
+        percent?.Report(100);
 
         if (!IsInstalled)
             throw new InvalidOperationException($"SteamCMD extraction failed; {ExePath} not found.");
