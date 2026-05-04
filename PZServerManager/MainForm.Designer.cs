@@ -1,3 +1,5 @@
+using PZServerManager.Tabs;
+
 namespace PZServerManager;
 
 partial class MainForm
@@ -6,9 +8,17 @@ partial class MainForm
 
     private TabControl _tabs = null!;
     private TabPage _setupTab = null!;
+    private SetupTab _setupContent = null!;
     private TabPage _serverTab = null!;
-    private TabPage _configTab = null!;
+    private ServerTab _serverContent = null!;
+    private TabPage _configTopTab = null!;
+    private TabControl _configSubTabs = null!;
+    private TabPage _configSubTabPage = null!;
+    private ConfigTab _configContent = null!;
+    private TabPage _sandboxSubTabPage = null!;
+    private SandboxTab _sandboxContent = null!;
     private TabPage _modsTab = null!;
+    private ModsTab _modsContent = null!;
 
     protected override void Dispose(bool disposing)
     {
@@ -22,14 +32,33 @@ partial class MainForm
 
         _tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(14, 6) };
 
-        _setupTab = MakePlaceholderTab("초기 설정", "Phase 2에서 SteamCMD + 좀보이드 서버 설치 위저드를 여기에 붙입니다.");
-        _serverTab = MakePlaceholderTab("서버 관리", "Phase 3에서 콘솔/RCON/플레이어/세이브 sub-tabs 들어옵니다.");
-        _configTab = MakePlaceholderTab("설정 관리", "Phase 4에서 servertest.ini / SandboxVars.lua 편집기 들어옵니다.");
-        _modsTab = MakePlaceholderTab("모드 관리", "Phase 5에서 워크샵 검색/설치 들어옵니다.");
+        _setupTab = new TabPage("초기 설정");
+        _setupContent = new SetupTab { Dock = DockStyle.Fill };
+        _setupTab.Controls.Add(_setupContent);
+
+        _serverTab = new TabPage("서버 관리");
+        _serverContent = new ServerTab { Dock = DockStyle.Fill };
+        _serverTab.Controls.Add(_serverContent);
+
+        _configTopTab = new TabPage("설정 관리");
+        _configSubTabs = new TabControl { Dock = DockStyle.Fill };
+        _configSubTabPage = new TabPage("Server config");
+        _configContent = new ConfigTab { Dock = DockStyle.Fill };
+        _configSubTabPage.Controls.Add(_configContent);
+        _sandboxSubTabPage = new TabPage("Sandbox");
+        _sandboxContent = new SandboxTab { Dock = DockStyle.Fill };
+        _sandboxSubTabPage.Controls.Add(_sandboxContent);
+        _configSubTabs.TabPages.Add(_configSubTabPage);
+        _configSubTabs.TabPages.Add(_sandboxSubTabPage);
+        _configTopTab.Controls.Add(_configSubTabs);
+
+        _modsTab = new TabPage("모드 관리");
+        _modsContent = new ModsTab { Dock = DockStyle.Fill };
+        _modsTab.Controls.Add(_modsContent);
 
         _tabs.TabPages.Add(_setupTab);
         _tabs.TabPages.Add(_serverTab);
-        _tabs.TabPages.Add(_configTab);
+        _tabs.TabPages.Add(_configTopTab);
         _tabs.TabPages.Add(_modsTab);
 
         AutoScaleMode = AutoScaleMode.Font;

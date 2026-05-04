@@ -1,0 +1,248 @@
+using System.Diagnostics;
+using PZServerManager.Models;
+using PZServerManager.Services;
+
+namespace PZServerManager.Tabs;
+
+public partial class SavesControl : UserControl
+{
+    private PzPaths? _paths;
+    private SaveBackup? _backup;
+    private AppConfig? _config;
+    private Action<AppConfig>? _saveConfig;
+
+    public SavesControl()
+    {
+        InitializeComponent();
+    }
+
+    public void Bind(PzPaths paths, AppConfig config, Action<AppConfig> saveConfig)
+    {
+        _paths = paths;
+        _config = config;
+        _saveConfig = saveConfig;
+        _backup = new SaveBackup(paths, () => _config?.BackupDir ?? "");
+
+        if (string.IsNullOrWhiteSpace(_config.BackupDir))
+            _config.BackupDir = Path.Combine(AppPaths.AppDataDir, "backups");
+
+        LoadSettingsToUi();
+        Refresh();
+    }
+
+    public new void Refresh()
+    {
+        if (_backup is null || _config is null) return;
+        _backupDirBox.Text = _config.BackupDir;
+        _savesList.BeginUpdate();
+        _savesList.Items.Clear();
+        try
+        {
+            var saves = _backup.ListSaves();
+            foreach (var s in saves)
+            {
+                var lvi = new ListViewItem(s.Name) { Tag = s };
+                lvi.SubItems.Add(s.SizeDisplay);
+                lvi.SubItems.Add(s.LastModified.ToString("yyyy-MM-dd HH:mm"));
+                lvi.SubItems.Add(s.BackupCount.ToString());
+                _savesList.Items.Add(lvi);
+            }
+            _statusLabel.Text = $"{saves.Count} saves at {_paths!.MultiplayerSavesDir}";
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _savesList.EndUpdate();
+        }
+    }
+
+    private SaveInfo? Selected()
+        => _savesList.SelectedItems.Count > 0 ? _savesList.SelectedItems[0].Tag as SaveInfo : null;
+
+    private void OnRefresh(object? sender, EventArgs e) => Refresh();
+
+    private void OnBrowseDir(object? sender, EventArgs e)
+    {
+        if (_config is null) return;
+        using var dlg = new FolderBrowserDialog
+        {
+            Description = "Backup destination",
+            UseDescriptionForTitle = true,
+            InitialDirectory = Directory.Exists(_config.BackupDir) ? _config.BackupDir : AppPaths.AppDataDir,
+        };
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        _config.BackupDir = dlg.SelectedPath;
+        _saveConfig?.Invoke(_config);
+        _backupDirBox.Text = _config.BackupDir;
+        Refresh();
+    }
+
+    private void OnOpenBackupDir(object? sender, EventArgs e)
+    {
+        if (_config is null) return;
+        Directory.CreateDirectory(_config.BackupDir);
+        Process.Start(new ProcessStartInfo { FileName = _config.BackupDir, UseShellExecute = true });
+    }
+
+    private void OnOpenSavesDir(object? sender, EventArgs e)
+    {
+        if (_paths is null) return;
+        Directory.CreateDirectory(_paths.MultiplayerSavesDir);
+        Process.Start(new ProcessStartInfo { FileName = _paths.MultiplayerSavesDir, UseShellExecute = true });
+    }
+
+    private async void OnBackup(object? sender, EventArgs e)
+    {
+        var s = Selected();
+        if (s is null) { Toast("세이브를 먼저 선택하세요."); return; }
+        await BackupSaveAsync(s.Name);
+    }
+
+    public async Task BackupSaveAsync(string saveName)
+    {
+        if (_backup is null || _config is null) return;
+        SetBusy(true);
+        try
+        {
+            var log = new Progress<string>(line => AppendLog(line));
+            var path = await _backup.BackupAsync(saveName, log, CancellationToken.None);
+            var deleted = _backup.Rotate(saveName, _config.BackupRetention);
+            if (deleted > 0) AppendLog($"[backup] rotated out {deleted} old backup(s)");
+            AppendLog($"[backup] saved to {path}");
+        }
+        catch (Exception ex) { AppendLog($"[error] backup failed: {ex.Message}"); }
+        finally
+        {
+            SetBusy(false);
+            Refresh();
+        }
+    }
+
+    private async void OnRestore(object? sender, EventArgs e)
+    {
+        var s = Selected();
+        if (s is null || _backup is null) { Toast("세이브를 먼저 선택하세요."); return; }
+        var backups = _backup.ListBackups(s.Name);
+        if (backups.Count == 0) { Toast("이 세이브에 대한 백업이 없습니다."); return; }
+
+        var pick = PickBackupDialog.Pick(this, backups);
+        if (pick is null) return;
+
+        var r = MessageBox.Show(this,
+            $"'{s.Name}' 을\n  {Path.GetFileName(pick)}\n에서 복원합니다. 현재 폴더는 덮어씌워집니다.",
+            "Restore", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (r != DialogResult.Yes) return;
+
+        SetBusy(true);
+        try
+        {
+            var log = new Progress<string>(line => AppendLog(line));
+            await _backup.RestoreAsync(s.Name, pick, log, CancellationToken.None);
+        }
+        catch (Exception ex) { AppendLog($"[error] restore failed: {ex.Message}"); }
+        finally
+        {
+            SetBusy(false);
+            Refresh();
+        }
+    }
+
+    private void OnDelete(object? sender, EventArgs e)
+    {
+        var s = Selected();
+        if (s is null || _backup is null) { Toast("세이브를 먼저 선택하세요."); return; }
+        var r = MessageBox.Show(this,
+            $"'{s.Name}' 세이브를 디스크에서 영구 삭제할까요? 백업 파일들은 유지됩니다.",
+            "Delete save", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (r != DialogResult.Yes) return;
+        try { _backup.Delete(s.Name); }
+        catch (Exception ex) { AppendLog($"[error] delete failed: {ex.Message}"); }
+        Refresh();
+    }
+
+    // ---- schedule UI ----
+    private void LoadSettingsToUi()
+    {
+        if (_config is null) return;
+        _autoBackupCheck.Checked = _config.AutoBackupEnabled;
+        _autoBackupHours.Value = (decimal)Math.Clamp(_config.AutoBackupIntervalHours, 0.25, 720);
+        _autoRestartCheck.Checked = _config.AutoRestartEnabled;
+        _autoRestartHours.Value = (decimal)Math.Clamp(_config.AutoRestartIntervalHours, 0.25, 720);
+        _crashRestartCheck.Checked = _config.AutoRestartOnCrash;
+        _retentionBox.Value = Math.Clamp(_config.BackupRetention, 0, 100);
+    }
+
+    private void OnSaveSchedule(object? sender, EventArgs e)
+    {
+        if (_config is null) return;
+        _config.AutoBackupEnabled = _autoBackupCheck.Checked;
+        _config.AutoBackupIntervalHours = (double)_autoBackupHours.Value;
+        _config.AutoRestartEnabled = _autoRestartCheck.Checked;
+        _config.AutoRestartIntervalHours = (double)_autoRestartHours.Value;
+        _config.AutoRestartOnCrash = _crashRestartCheck.Checked;
+        _config.BackupRetention = (int)_retentionBox.Value;
+        _saveConfig?.Invoke(_config);
+        AppendLog("[schedule] saved");
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _backupButton.Enabled = !busy;
+        _restoreButton.Enabled = !busy;
+        _deleteButton.Enabled = !busy;
+        _refreshButton.Enabled = !busy;
+        Cursor = busy ? Cursors.AppStarting : Cursors.Default;
+    }
+
+    private void AppendLog(string line)
+    {
+        if (string.IsNullOrEmpty(line)) return;
+        if (InvokeRequired) { BeginInvoke(() => AppendLog(line)); return; }
+        _logBox.AppendText(line);
+        if (!line.EndsWith('\n')) _logBox.AppendText(Environment.NewLine);
+    }
+
+    private void Toast(string msg)
+        => MessageBox.Show(this, msg, "Saves", MessageBoxButtons.OK, MessageBoxIcon.Information);
+}
+
+internal static class PickBackupDialog
+{
+    public static string? Pick(IWin32Window owner, IReadOnlyList<string> backups)
+    {
+        if (backups.Count == 0) return null;
+
+        using var f = new Form
+        {
+            Text = "Pick a backup",
+            FormBorderStyle = FormBorderStyle.Sizable,
+            StartPosition = FormStartPosition.CenterParent,
+            ClientSize = new Size(560, 380),
+            MinimumSize = new Size(420, 280),
+            Font = new Font("Segoe UI", 9.5f),
+        };
+        var list = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, Font = new Font("Consolas", 9.5f) };
+        foreach (var b in backups)
+        {
+            var fi = new FileInfo(b);
+            list.Items.Add($"{fi.LastWriteTime:yyyy-MM-dd HH:mm}   {fi.Length / 1024 / 1024,6} MB   {fi.Name}");
+        }
+        list.SelectedIndex = 0;
+
+        var bottom = new Panel { Dock = DockStyle.Bottom, Height = 44, Padding = new Padding(8) };
+        var ok = new Button { Text = "Restore", DialogResult = DialogResult.OK, Anchor = AnchorStyles.Right, Size = new Size(100, 28), Location = new Point(bottom.ClientSize.Width - 220, 8) };
+        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Anchor = AnchorStyles.Right, Size = new Size(100, 28), Location = new Point(bottom.ClientSize.Width - 110, 8) };
+        bottom.Controls.Add(ok);
+        bottom.Controls.Add(cancel);
+
+        f.Controls.Add(list);
+        f.Controls.Add(bottom);
+        f.AcceptButton = ok;
+        f.CancelButton = cancel;
+
+        return f.ShowDialog(owner) == DialogResult.OK ? backups[list.SelectedIndex] : null;
+    }
+}
