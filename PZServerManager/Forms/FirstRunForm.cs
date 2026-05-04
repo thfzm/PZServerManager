@@ -50,7 +50,7 @@ public partial class FirstRunForm : Form
         _downloadButton.Enabled = card2Active && _busyCts is null;
         _installButton.Enabled = card3Active && _busyCts is null;
         _continueButton.Enabled = _stage == Stage.Done;
-        _cancelButton.Text = _busyCts is null ? "Cancel" : "Stop";
+        _cancelButton.Text = _busyCts is null ? "취소" : "중단";
     }
 
     private StepBadge.BadgeState BadgeFor(Stage stage)
@@ -95,7 +95,7 @@ public partial class FirstRunForm : Form
         // SteamCMD already present? Skip step 2.
         if (File.Exists(Path.Combine(SteamCmdDir, "steamcmd.exe")))
         {
-            _status2.Text = "SteamCMD already present at this path.";
+            _status2.Text = "SteamCMD가 이미 이 경로에 설치되어 있습니다.";
             _progress2.Value = 100;
             _stage = Stage.InstallServer;
         }
@@ -123,25 +123,35 @@ public partial class FirstRunForm : Form
                 AppendFullLog(line);
             });
             var pct = new Progress<int>(p => _progress2.Value = Math.Clamp(p, 0, 100));
+
+            // Phase 1: download zip (reports real percentage via Content-Length)
+            ((IProgress<string>)log).Report("[manager] downloading SteamCMD…");
             await steamCmd.DownloadAndExtractAsync(log, pct, _busyCts.Token);
 
-            _status2.Text = "Done.";
+            // Phase 2: pre-warm so the bootstrap exe self-updates now (instead of mid-server-install)
+            ((IProgress<string>)log).Report("[manager] running self-update (this is the part that prints exit 7 — handled internally)");
+            _progress2.Style = ProgressBarStyle.Marquee;
+            await steamCmd.PrewarmAsync(log, _busyCts.Token);
+            _progress2.Style = ProgressBarStyle.Continuous;
+
+            _status2.Text = "완료 — SteamCMD 준비됨.";
             _progress2.Value = 100;
             _stage = Stage.InstallServer;
         }
         catch (OperationCanceledException)
         {
-            _status2.Text = "Cancelled.";
+            _status2.Text = "중단되었습니다.";
         }
         catch (Exception ex)
         {
             _status2.Text = $"Failed: {ex.Message}";
             AppendFullLog($"[error] {ex.Message}");
-            MessageBox.Show(this, ex.Message, "Download failed",
+            MessageBox.Show(this, ex.Message, "SteamCMD install failed",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
+            _progress2.Style = ProgressBarStyle.Continuous;
             _busyCts?.Dispose();
             _busyCts = null;
             UpdateUi();
@@ -168,7 +178,8 @@ public partial class FirstRunForm : Form
                 if (m.Success && int.TryParse(m.Groups[1].Value, out var p))
                     _progress3.Value = Math.Clamp(p, 0, 100);
             });
-            var exit = await steamCmd.InstallOrUpdatePzServerAsync(ServerDir, log, _busyCts.Token);
+            // First install — skip `validate` for speed; it would re-check every file we just freshly fetched.
+            var exit = await steamCmd.InstallOrUpdatePzServerAsync(ServerDir, log, _busyCts.Token, validate: false);
             if (exit != 0)
                 throw new InvalidOperationException($"SteamCMD exited with code {exit}.");
 
@@ -181,12 +192,12 @@ public partial class FirstRunForm : Form
             Result = config;
 
             _progress3.Value = 100;
-            _status3.Text = "Done.";
+            _status3.Text = "완료.";
             _stage = Stage.Done;
         }
         catch (OperationCanceledException)
         {
-            _status3.Text = "Cancelled.";
+            _status3.Text = "중단되었습니다.";
         }
         catch (Exception ex)
         {

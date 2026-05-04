@@ -71,7 +71,7 @@ partial class FirstRunForm
         // ---- title ----
         _titleLabel = new Label
         {
-            Text = "Setup",
+            Text = "초기 설정",
             Font = new Font("Segoe UI Semibold", 18f),
             ForeColor = TextPrimary,
             AutoSize = true,
@@ -79,7 +79,7 @@ partial class FirstRunForm
         };
         _subtitleLabel = new Label
         {
-            Text = "Three steps. Buttons unlock in order.",
+            Text = "세 단계로 설치합니다 — 각 단계가 끝나야 다음 버튼이 활성화됩니다.",
             ForeColor = TextSecondary,
             AutoSize = true,
             Location = new Point(30, 60),
@@ -90,7 +90,7 @@ partial class FirstRunForm
         _badge1 = new StepBadge { Number = 1, Location = new Point(20, 22) };
         _step1Title = new Label
         {
-            Text = "Pick install location",
+            Text = "설치 경로 선택",
             Font = new Font("Segoe UI Semibold", 11f),
             ForeColor = TextPrimary,
             AutoSize = true,
@@ -98,7 +98,7 @@ partial class FirstRunForm
         };
         _step1Description = new Label
         {
-            Text = "SteamCMD and the dedicated server (~5 GB) will live under this folder.",
+            Text = "SteamCMD와 좀보이드 데디케이티드 서버(~5GB)가 이 폴더 아래에 설치됩니다.",
             ForeColor = TextSecondary,
             AutoSize = true,
             Location = new Point(70, 42),
@@ -110,7 +110,7 @@ partial class FirstRunForm
         };
         _browseButton = new Button
         {
-            Text = "Browse…",
+            Text = "찾아보기…",
             Location = new Point(456, 69),
             Size = new Size(80, 26),
             FlatStyle = FlatStyle.System,
@@ -118,7 +118,7 @@ partial class FirstRunForm
         _browseButton.Click += OnBrowse;
         _confirmPathButton = new Button
         {
-            Text = "Confirm",
+            Text = "확인",
             Location = new Point(548, 69),
             Size = new Size(96, 26),
             FlatStyle = FlatStyle.System,
@@ -136,7 +136,7 @@ partial class FirstRunForm
         _badge2 = new StepBadge { Number = 2, Location = new Point(20, 22) };
         _step2Title = new Label
         {
-            Text = "Download SteamCMD",
+            Text = "SteamCMD 설치",
             Font = new Font("Segoe UI Semibold", 11f),
             ForeColor = TextPrimary,
             AutoSize = true,
@@ -144,7 +144,7 @@ partial class FirstRunForm
         };
         _step2Description = new Label
         {
-            Text = "Small (~2 MB). Self-updates on first run.",
+            Text = "zip 다운로드(~2MB) + 자체 업데이트(~75MB)까지 한 번에 끝냅니다.",
             ForeColor = TextSecondary,
             AutoSize = true,
             Location = new Point(70, 42),
@@ -168,9 +168,9 @@ partial class FirstRunForm
         };
         _downloadButton = new Button
         {
-            Text = "Download",
-            Location = new Point(548, 70),
-            Size = new Size(96, 28),
+            Text = "SteamCMD 설치",
+            Location = new Point(528, 70),
+            Size = new Size(116, 28),
             FlatStyle = FlatStyle.System,
         };
         _downloadButton.Click += OnDownloadSteamCmd;
@@ -186,7 +186,7 @@ partial class FirstRunForm
         _badge3 = new StepBadge { Number = 3, Location = new Point(20, 22) };
         _step3Title = new Label
         {
-            Text = "Install Project Zomboid Dedicated Server",
+            Text = "좀보이드 데디케이티드 서버 설치",
             Font = new Font("Segoe UI Semibold", 11f),
             ForeColor = TextPrimary,
             AutoSize = true,
@@ -194,7 +194,7 @@ partial class FirstRunForm
         };
         _step3Description = new Label
         {
-            Text = "~5 GB download via SteamCMD (app 380870, anonymous).",
+            Text = "SteamCMD로 app 380870 익명 다운로드 (~5GB).",
             ForeColor = TextSecondary,
             AutoSize = true,
             Location = new Point(70, 42),
@@ -218,9 +218,9 @@ partial class FirstRunForm
         };
         _installButton = new Button
         {
-            Text = "Install",
-            Location = new Point(548, 70),
-            Size = new Size(96, 28),
+            Text = "서버 설치",
+            Location = new Point(528, 70),
+            Size = new Size(116, 28),
             FlatStyle = FlatStyle.System,
         };
         _installButton.Click += OnInstallServer;
@@ -241,7 +241,7 @@ partial class FirstRunForm
         };
         _showLogToggle = new CheckBox
         {
-            Text = "Show full log",
+            Text = "전체 로그 보기",
             Anchor = AnchorStyles.Left,
             Location = new Point(0, 6),
             AutoSize = true,
@@ -251,7 +251,7 @@ partial class FirstRunForm
 
         _cancelButton = new Button
         {
-            Text = "Cancel",
+            Text = "취소",
             Anchor = AnchorStyles.Right,
             Location = new Point(_footer.ClientSize.Width - 230, 4),
             Size = new Size(100, 30),
@@ -260,7 +260,7 @@ partial class FirstRunForm
         _cancelButton.Click += OnCancel;
         _continueButton = new Button
         {
-            Text = "Continue",
+            Text = "계속",
             Anchor = AnchorStyles.Right,
             Location = new Point(_footer.ClientSize.Width - 120, 4),
             Size = new Size(100, 30),

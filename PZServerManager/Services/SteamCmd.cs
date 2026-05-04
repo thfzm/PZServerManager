@@ -112,10 +112,17 @@ public sealed class SteamCmd
         return proc.ExitCode;
     }
 
-    public Task<int> InstallOrUpdatePzServerAsync(string serverDir, IProgress<string>? log, CancellationToken ct)
+    /// Forces SteamCMD's bootstrap binary to self-update so subsequent commands run cleanly
+    /// (no surprise exit 7). Cheap to call repeatedly — once self-updated, this is just a
+    /// no-op `+quit`.
+    public Task<int> PrewarmAsync(IProgress<string>? log, CancellationToken ct)
+        => RunAsync("+quit", log, ct);
+
+    public Task<int> InstallOrUpdatePzServerAsync(string serverDir, IProgress<string>? log, CancellationToken ct, bool validate = true)
     {
         Directory.CreateDirectory(serverDir);
-        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +app_update 380870 validate +quit";
+        var validateFlag = validate ? " validate" : "";
+        var args = $"+force_install_dir \"{serverDir}\" +login anonymous +app_update 380870{validateFlag} +quit";
         return RunAsync(args, log, ct);
     }
 
