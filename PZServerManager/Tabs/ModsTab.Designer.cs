@@ -148,8 +148,6 @@ partial class ModsTab
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterDistance = 540,
-            Panel1MinSize = 320,
-            Panel2MinSize = 320,
         };
 
         // -- left (installed) --

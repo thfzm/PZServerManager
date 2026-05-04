@@ -48,8 +48,6 @@ partial class LogsControl
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterDistance = 360,
-            Panel1MinSize = 250,
-            Panel2MinSize = 300,
         };
 
         _filesList = new ListView
