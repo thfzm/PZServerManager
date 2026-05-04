@@ -42,7 +42,22 @@ public sealed class SteamCmd
         log?.Report("SteamCMD installed.");
     }
 
+    /// Runs SteamCMD. Exit code 7 means SteamCMD just self-updated and asks to be re-run —
+    /// we transparently retry up to twice so callers never see that intermediate state.
     public async Task<int> RunAsync(string arguments, IProgress<string>? log, CancellationToken ct)
+    {
+        const int maxRetries = 2;
+        int exit = 0;
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            exit = await RunOnceAsync(arguments, log, ct);
+            if (exit != 7) return exit;
+            log?.Report("[manager] SteamCMD self-updated (exit 7); rerunning the command…");
+        }
+        return exit;
+    }
+
+    private async Task<int> RunOnceAsync(string arguments, IProgress<string>? log, CancellationToken ct)
     {
         if (!IsInstalled)
             throw new InvalidOperationException("SteamCMD is not installed.");
